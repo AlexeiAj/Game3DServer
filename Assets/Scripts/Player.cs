@@ -28,7 +28,7 @@ public class Player : MonoBehaviour
     private bool jumping;
 
     void Start() {
-        Cursor.lockState = CursorLockMode.Locked;
+        // Cursor.lockState = CursorLockMode.Locked;
     }
 
     void Update()
