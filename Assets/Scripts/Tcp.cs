@@ -11,9 +11,11 @@ public class Tcp {
     private byte[] recieveBuffer;
     private Packet receiveData;
 
-    public void connect(TcpClient socket) {
+    public Tcp (TcpClient socket) {
         this.socket = socket;
+    }
 
+    public void connect() {
         socket.ReceiveBufferSize = dataBufferSize;
         socket.SendBufferSize = dataBufferSize;
 
@@ -25,20 +27,12 @@ public class Tcp {
         stream.BeginRead(recieveBuffer, 0, dataBufferSize, receiveCallback, null);
     }
 
-    public void sendData(Packet packet) {
-        try {
-            if(socket == null) return;
-            stream.BeginWrite(packet.ToArray(), 0, packet.Length(), null, null);
-        } catch {
-            Debug.Log("eErro ao enviar msg para o client!");
-        }
-    }
-    
     private void receiveCallback(System.IAsyncResult result) {
         try {
             int byteLenght = stream.EndRead(result);
+
             if (byteLenght <= 0) {
-                Debug.Log("Desconectar do client");
+                Debug.Log("Disconnecting client tcp...");
                 return;
             }
 
@@ -49,7 +43,7 @@ public class Tcp {
             stream.BeginRead(recieveBuffer, 0, dataBufferSize, receiveCallback, null);
         } catch (System.Exception e) {
             Debug.Log(e);
-            Debug.Log("Desconectar do client");
+            Debug.Log("Disconnecting client tcp...");
         }
     }
 
@@ -70,7 +64,8 @@ public class Tcp {
             string msg = packet.ReadString();
             string username = packet.ReadString();
             int id = packet.ReadInt();
-            Debug.Log("msg: " + msg + " id: " + id + " username: " + username);
+
+            Debug.Log("Client tcp message: " + msg + " id: " + id + " username: " + username);
 
             packetLenght = 0;
 
@@ -83,7 +78,12 @@ public class Tcp {
         return packetLenght <= 1;
     }
 
-    public TcpClient getSocket(){
-        return socket;
+    public void sendData(Packet packet) {
+        try {
+            if (socket == null) return;
+            stream.BeginWrite(packet.ToArray(), 0, packet.Length(), null, null);
+        } catch {
+            Debug.Log("Err. sending tcp to client!");
+        }
     }
 }

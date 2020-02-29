@@ -10,11 +10,18 @@ public class Client {
 
     public Client(int id) {
         this.id = id;
-        tcp = new Tcp();
+    }
+
+    public void sendTcpData(Packet packet) {
+        tcp.sendData(packet);
     }
 
     public Tcp getTcp() {
         return tcp;
+    }
+
+    public void setTcp(Tcp tcp) {
+        this.tcp = tcp;
     }
 
     public int getId() {
