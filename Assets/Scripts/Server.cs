@@ -12,6 +12,7 @@ public class Server : MonoBehaviour {
     private int maxPlayers = 50;
     private int players = 0;
     private int port = 8080;
+    private Udp udp;
 
     private void Awake() {
         if (instance != null && instance != this){
@@ -25,6 +26,10 @@ public class Server : MonoBehaviour {
 
     private void startServer() {
         Debug.Log("Starting server...");
+
+        udpListener = new UdpClient(port);
+        udp = new Udp(udpListener);
+        udp.connect();
 
         tcpListener = new TcpListener(IPAddress.Any, port);
         tcpListener.Start();
@@ -48,27 +53,18 @@ public class Server : MonoBehaviour {
         Tcp tcp = new Tcp(socket);
         client.setTcp(tcp);
         client.getTcp().connect();
-
-        udpListener = new UdpClient(port);
-        Udp udp = new Udp(udpListener);
-        client.setUdp(udp);
-        client.getUdp().connect();
         
         clients.Add(client);
         sendTcpData(client.getId(), "Hello from server TCP.");
     }
 
-    public void sendReceiveConnectionByUdp(int client) {
-        sendUdpData(client, "Hello from server UDP.");
-    }
-
-    private void sendTcpData(int client, string msg) {
+    private void sendTcpData(int id, string msg) {
         Packet packet = new Packet();
         packet.Write(msg);
-        packet.Write(client);
+        packet.Write(id);
         packet.WriteLength();
         Debug.Log("Sending message to client.. " + msg);
-        clients[client].sendTcpData(packet);
+        getClientById(id).sendTcpData(packet);
     }
 
     private void sendTcpDataToAll(string msg) {
@@ -95,13 +91,17 @@ public class Server : MonoBehaviour {
         });
     }
 
-    private void sendUdpData(int client, string msg) {
+    public void sendReceiveConnectionByUdp(int id) {
+        sendUdpData(id, "Hello from server UDP.");
+    }
+
+    private void sendUdpData(int id, string msg) {
         Packet packet = new Packet();
         packet.Write(msg);
-        packet.Write(client);
+        packet.Write(id);
         packet.WriteLength();
         Debug.Log("Sending message to client.. " + msg);
-        clients[client].sendUdpData(packet);
+        sendUdpData(packet, getClientById(id).getEndPointUdp());
     }
 
     private void sendUdpDataToAll(string msg) {
@@ -111,7 +111,7 @@ public class Server : MonoBehaviour {
             packet.Write(client.getId());
             packet.WriteLength();
             Debug.Log("Sending message to clients.. " + msg);
-            client.sendUdpData(packet);
+            sendUdpData(packet, client.getEndPointUdp());
         });
     }
 
@@ -123,8 +123,16 @@ public class Server : MonoBehaviour {
                 packet.Write(client.getId());
                 packet.WriteLength();
                 Debug.Log("Sending message to clients.. " + msg);
-                client.sendUdpData(packet);
+                sendUdpData(packet, client.getEndPointUdp());
             }
         });
+    }
+
+    public void sendUdpData(Packet packet, IPEndPoint endPoint) {
+        udp.sendData(packet, endPoint);
+    }
+
+    public Client getClientById(int id) {
+        return clients[id];
     }
 }
