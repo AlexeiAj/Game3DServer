@@ -7,11 +7,11 @@ using System.Net.Sockets;
 public class Server : MonoBehaviour {
     public static Server instance = null;
     private TcpListener tcpListener;
-    // private UdpClient udpListener;
+    private UdpClient udpListener;
     private List<Client> clients = new List<Client>();
-    private int maxPlayers;
+    private int maxPlayers = 50;
     private int players = 0;
-    private int port;
+    private int port = 8080;
 
     private void Awake() {
         if (instance != null && instance != this){
@@ -20,9 +20,6 @@ public class Server : MonoBehaviour {
         }
 
         instance = this;
-
-        this.maxPlayers = 50;
-        this.port = 8080;
         startServer();
     }
 
@@ -32,9 +29,6 @@ public class Server : MonoBehaviour {
         tcpListener = new TcpListener(IPAddress.Any, port);
         tcpListener.Start();
         tcpListener.BeginAcceptTcpClient(new System.AsyncCallback(tcpConnectCallback), null);
-
-        // udpListener = new UdpClient(port);
-        // udpListener.BeginReceive(udpReceiveCallback, null);
 
         Debug.Log("Server started!");
     }
@@ -54,9 +48,18 @@ public class Server : MonoBehaviour {
         Tcp tcp = new Tcp(socket);
         client.setTcp(tcp);
         client.getTcp().connect();
+
+        udpListener = new UdpClient(port);
+        Udp udp = new Udp(udpListener);
+        client.setUdp(udp);
+        client.getUdp().connect();
         
         clients.Add(client);
-        sendTcpData(client.getId(), "Hello from server.");
+        sendTcpData(client.getId(), "Hello from server TCP.");
+    }
+
+    public void sendReceiveConnectionByUdp(int client) {
+        sendUdpData(client, "Hello from server UDP.");
     }
 
     private void sendTcpData(int client, string msg) {
@@ -92,91 +95,36 @@ public class Server : MonoBehaviour {
         });
     }
 
-//     private void udpReceiveCallback(System.IAsyncResult result) {
-//         try {
-//             IPEndPoint clientEndPoint = new IPEndPoint(IPAddress.Any, 0);
-//             byte[] data = udpListener.EndReceive(result, ref clientEndPoint);
-//             udpListener.BeginReceive(udpReceiveCallback, null);
+    private void sendUdpData(int client, string msg) {
+        Packet packet = new Packet();
+        packet.Write(msg);
+        packet.Write(client);
+        packet.WriteLength();
+        Debug.Log("Sending message to client.. " + msg);
+        clients[client].sendUdpData(packet);
+    }
 
-//             if (data.Length < 4) {
-//                 Debug.Log("Desconectar udp");
-//                 return;
-//             }
+    private void sendUdpDataToAll(string msg) {
+        clients.ForEach(client => {
+            Packet packet = new Packet();
+            packet.Write(msg);
+            packet.Write(client.getId());
+            packet.WriteLength();
+            Debug.Log("Sending message to clients.. " + msg);
+            client.sendUdpData(packet);
+        });
+    }
 
-//             Packet packet = new Packet(data);
-//             int id = packet.ReadInt();
-//             if (id == 0) return;
-
-//             if(clients[id].getUdp().getEndPoint() == null) {
-//                 clients[id].getUdp().setEndPoint(clientEndPoint);
-//                 return;
-//             }
-
-//             // sendMsgUdp(id, "Bem vindo client udp!");
-
-//             if (clients[id].getUdp().getEndPoint().ToString() == clientEndPoint.ToString()) {
-//                 clients[id].getUdp().handleData(packet);
-//             }
-//         } catch (System.Exception e) {
-//             Debug.Log(e);
-//             Debug.Log("Desconectar udp");
-//         }
-//     }
-
-//     private void sendMsgUdp(int client, string msg) {
-//         Packet packet = new Packet();
-//         packet.Write(msg);
-//         packet.Write(client);
-
-//         sendUdpData(client, packet);
-//     }
-
-//     private void sendUdpData(int client, Packet packet) {
-//         packet.WriteLength();
-//         IPEndPoint endPoint = clients[client].getUdp().getEndPoint();
-
-//         try {
-//             if (endPoint == null) return;
-//             udpListener.BeginSend(packet.ToArray(), packet.Length(), endPoint, null, null);
-//         } catch (System.Exception e) {
-//             Debug.Log(e);
-//             Debug.Log("Erro ao enviar data para client udp");
-//         }
-//     }
-
-//     private void sendUdpDataToAll(Packet packet) {
-//         packet.WriteLength();
-
-//         for (int i = 1; i <= maxPlayers; i++) {
-//             IPEndPoint endPoint = clients[i].getUdp().getEndPoint();
-
-//             try {
-//                 if (endPoint != null) {
-//                     udpListener.BeginSend(packet.ToArray(), packet.Length(), endPoint, null, null);
-//                 }
-//             } catch (System.Exception e) {
-//                 Debug.Log(e);
-//                 Debug.Log("Erro ao enviar data para client udp");
-//             }
-//         }
-//     }
-
-//     private void sendUdpDataToAll(int exceptClient, Packet packet) {
-//         packet.WriteLength();
-
-//         for (int i = 1; i <= maxPlayers; i++) {
-//             if(i == exceptClient) continue;
-
-//             IPEndPoint endPoint = clients[i].getUdp().getEndPoint();
-
-//             try {
-//                 if (endPoint != null) {
-//                     udpListener.BeginSend(packet.ToArray(), packet.Length(), endPoint, null, null);
-//                 }
-//             } catch (System.Exception e) {
-//                 Debug.Log(e);
-//                 Debug.Log("Erro ao enviar data para client udp");
-//             }
-//         }
-//     }
+    private void sendUdpDataToAll(int exceptClient, string msg) {
+        clients.ForEach(client => {
+            if(client.getId() != exceptClient) {
+                Packet packet = new Packet();
+                packet.Write(msg);
+                packet.Write(client.getId());
+                packet.WriteLength();
+                Debug.Log("Sending message to clients.. " + msg);
+                client.sendUdpData(packet);
+            }
+        });
+    }
 }

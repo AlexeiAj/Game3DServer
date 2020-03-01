@@ -7,6 +7,7 @@ using System.Net.Sockets;
 public class Client {
     private int id;
     private Tcp tcp;
+    private Udp udp;
 
     public Client(int id) {
         this.id = id;
@@ -14,6 +15,18 @@ public class Client {
 
     public void sendTcpData(Packet packet) {
         tcp.sendData(packet);
+    }
+
+    public void sendUdpData(Packet packet) {
+        udp.sendData(packet);
+    }
+
+    public Udp getUdp() {
+        return udp;
+    }
+
+    public void setUdp(Udp udp) {
+        this.udp = udp;
     }
 
     public Tcp getTcp() {
