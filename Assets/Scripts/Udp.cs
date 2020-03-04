@@ -38,20 +38,27 @@ public class Udp {
 
         int i = packet.ReadInt(); //só para remover o id do pacote
 
-        string msg = packet.ReadString();
-        string username = packet.ReadString();
+        string method = packet.ReadString();
         int id = packet.ReadInt();
 
         Client client = Server.instance.getClientById(id);
-        if(client.getEndPointUdp() == null) {
+        if (client.getEndPointUdp() == null) {
             client.setEndPointUdp(clientEndPoint);
         }
 
-        Debug.Log("Client udp message: " + msg + " id: " + id + " username: " + username);
-        
-        if (client.getFirstConnectionUdp()) {
-            client.setFirstConnectionUdp(false);
+        if (method.Equals("newConnectionUDP")) {
             Server.instance.sendReceiveConnectionByUdp(id);
+        }
+
+        if (method.Equals("playerKeys")) {
+            float x = packet.ReadFloat();
+            float y = packet.ReadFloat();
+            bool jumping = packet.ReadBool();
+            Quaternion rotation = packet.ReadQuaternion();
+
+            Server.instance.addAction(() => {
+                Server.instance.playerKeys(id, x, y, jumping, rotation);
+            });
         }
     }
 

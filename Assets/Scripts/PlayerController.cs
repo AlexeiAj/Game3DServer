@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Player : MonoBehaviour
+public class PlayerController : MonoBehaviour
 {
     private float jumpHeight = 10000f;
     private float jumpDelay = 0.3f;
@@ -18,7 +18,6 @@ public class Player : MonoBehaviour
     private float groundCheckRadius = 0.1f;
     private bool readyToJump = true;
 
-    public Camera playerCam;
     public Rigidbody rb;
     public Transform groundCheck;
     public LayerMask whatIsGround;
@@ -27,33 +26,26 @@ public class Player : MonoBehaviour
     private float y;
     private bool jumping;
 
-    void Start() {
-        // Cursor.lockState = CursorLockMode.Locked;
-    }
-
-    void Update()
-    {
+    void Update() {
         isGrounded = Physics.OverlapSphere(groundCheck.position, groundCheckRadius, whatIsGround).Length > 0;
-        keys();
-        look();
         movement();
         jump();
     }
 
-    private void keys(){
-        x = Input.GetAxisRaw("Horizontal");
-        y = Input.GetAxisRaw("Vertical");
-        jumping = Input.GetButton("Jump");
+    public void setKeys(float x, float y, bool jumping, Quaternion rotation){
+        this.x = x;
+        this.y = y;
+        this.jumping = jumping;
+        transform.rotation = rotation;
     }
 
-    private void movement(){
+    private void movement() {
         counterMovement();
-
         rb.AddForce(transform.forward * y * moveSpeed * Time.deltaTime);
         rb.AddForce(transform.right * x * moveSpeed * Time.deltaTime);
     }
 
-    private void jump(){
+    private void jump() {
         if(jumping && isGrounded && readyToJump){
             readyToJump = false;
             rb.AddForce(Vector3.up * jumpHeight, ForceMode.Impulse);
@@ -61,33 +53,22 @@ public class Player : MonoBehaviour
         }
     }
 
-    private void look(){
-        float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
-        float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime;
-
-        xRotation -= mouseY;
-        xRotation = Mathf.Clamp(xRotation, -90f, 90f);
-
-        playerCam.transform.localRotation = Quaternion.Euler(xRotation, 0, 0);
-        transform.Rotate(Vector3.up * mouseX);
-    }
-
-    private void restartJump(){
+    private void restartJump() {
         readyToJump = true;
     }
 
-    private void counterMovement(){
-        if(isGrounded){
+    private void counterMovement() {
+        if (isGrounded) {
             Vector2 mag = getMagnitudeXAndY();
 
-            if(x == 0) rb.AddForce(transform.right * moveSpeed * Time.deltaTime  * -mag.x * cmMultiplier);
-            if(y == 0) rb.AddForce(transform.forward * moveSpeed * Time.deltaTime  * -mag.y * cmMultiplier);
+            if (x == 0) rb.AddForce(transform.right * moveSpeed * Time.deltaTime  * -mag.x * cmMultiplier);
+            if (y == 0) rb.AddForce(transform.forward * moveSpeed * Time.deltaTime  * -mag.y * cmMultiplier);
         }
 
         if(rb.velocity.magnitude > maxSpeed) rb.velocity = rb.velocity.normalized * maxSpeed;
     }
 
-    private Vector2 getMagnitudeXAndY(){
+    private Vector2 getMagnitudeXAndY() {
         float lookAngle = transform.eulerAngles.y;
         float moveAngle = Mathf.Atan2(rb.velocity.x, rb.velocity.z) * Mathf.Rad2Deg;
         float u = Mathf.DeltaAngle(lookAngle, moveAngle);

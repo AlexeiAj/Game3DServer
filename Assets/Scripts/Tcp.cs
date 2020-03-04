@@ -61,11 +61,13 @@ public class Tcp {
             byte[] packetBytes = receiveData.ReadBytes(packetLenght);
             Packet packet = new Packet(packetBytes);
 
-            string msg = packet.ReadString();
-            string username = packet.ReadString();
-            int id = packet.ReadInt();
+            string method = packet.ReadString();
 
-            Debug.Log("Client tcp message: " + msg + " id: " + id + " username: " + username);
+            if(method.Equals("newConnection")) {
+                int id = packet.ReadInt();
+                string username = packet.ReadString();
+                Server.instance.newConnection(id, username);
+            }
 
             packetLenght = 0;
 

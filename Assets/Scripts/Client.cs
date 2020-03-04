@@ -8,10 +8,17 @@ public class Client {
     private int id;
     private Tcp tcp;
     private IPEndPoint endPointUdp;
-    private bool firstConnectionUdp = true;
+    
+    private GameObject player;
 
-    public Client(int id) {
+    private string username;
+    private Vector3 position;
+    private Quaternion rotation;
+
+    public Client(int id, Vector3 position, Quaternion rotation) {
         this.id = id;
+        this.position = position;
+        this.rotation = rotation;
     }
 
     public void sendTcpData(Packet packet) {
@@ -38,11 +45,35 @@ public class Client {
         this.endPointUdp = endPointUdp;
     } 
 
-    public bool getFirstConnectionUdp() {
-        return firstConnectionUdp;
+    public Vector3 getPosition() {
+        return position;
     }
 
-    public void setFirstConnectionUdp(bool firstConnectionUdp) {
-        this.firstConnectionUdp = firstConnectionUdp;
+    public Quaternion getRotation() {
+        return rotation;
+    }
+
+    public void setPosition(Vector3 position) {
+        this.position = position;
+    }
+
+    public void setRotation(Quaternion rotation) {
+        this.rotation = rotation;
+    }
+
+    public string getUsername() {
+        return username;
+    }
+
+    public void setUsername(string username) {
+        this.username = username;
+    }
+
+    public void setPlayer(GameObject player) {
+        this.player = player;
+    }
+
+    public GameObject getPlayer() {
+        return player;
     }
 }

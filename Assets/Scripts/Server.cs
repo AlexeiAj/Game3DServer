@@ -3,16 +3,20 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Net;
 using System.Net.Sockets;
+using System;
 
 public class Server : MonoBehaviour {
+    public GameObject playerPrefab;
     public static Server instance = null;
     private TcpListener tcpListener;
     private UdpClient udpListener;
     private List<Client> clients = new List<Client>();
     private int maxPlayers = 50;
-    private int players = 0;
+    private int totalPlayers = 0;
     private int port = 8080;
     private Udp udp;
+
+    private static Stack actions = new Stack();
 
     private void Awake() {
         if (instance != null && instance != this){
@@ -22,6 +26,39 @@ public class Server : MonoBehaviour {
 
         instance = this;
         startServer();
+    }
+
+    private void Update() {
+        clients.ForEach(client => {
+            GameObject player = client.getPlayer();
+            
+            if(player != null){
+                client.setPosition(player.transform.position);
+                client.setRotation(player.transform.rotation);
+
+                Packet packet = new Packet();
+                packet.Write("playerPosition");
+                packet.Write(client.getId());
+                packet.Write(client.getPosition());
+                packet.Write(client.getRotation());
+
+                sendUdpDataToAll(packet);
+            }
+        });
+
+        if (actions.Count == 0) return;
+
+        Action action = (Action) actions.Pop();
+        action.Invoke();
+    }
+
+    public void instantiatePlayer(int id, string username, Vector3 position, Quaternion rotation) {
+        GameObject playerGO = Instantiate(playerPrefab, position, rotation);
+        getClientById(id).setPlayer(playerGO);
+    }
+
+    internal void addAction(Action action) {
+        actions.Push(action);
     }
 
     private void startServer() {
@@ -42,87 +79,70 @@ public class Server : MonoBehaviour {
         TcpClient socket = tcpListener.EndAcceptTcpClient(result);
         tcpListener.BeginAcceptTcpClient(new System.AsyncCallback(tcpConnectCallback), null);
         
-        if(players >= maxPlayers) {
+        if(totalPlayers >= maxPlayers) {
             Debug.Log("Server is full.");
             return;
         }
 
-        Debug.Log("New client tcp connected!");
+        var rand = new System.Random();
+        int x = rand.Next(-16, 16);
+        int z = rand.Next(-16, 16);
 
-        Client client = new Client(players++);
+        Client client = new Client(totalPlayers++, new Vector3(x, 5, z), Quaternion.identity);
         Tcp tcp = new Tcp(socket);
         client.setTcp(tcp);
         client.getTcp().connect();
         
         clients.Add(client);
-        sendTcpData(client.getId(), "Hello from server TCP.");
+        spawnPlayer(client.getId(), client.getPosition(), client.getRotation());
+
+        Debug.Log("New client connected!");
     }
 
-    private void sendTcpData(int id, string msg) {
-        Packet packet = new Packet();
-        packet.Write(msg);
-        packet.Write(id);
+    private void sendTcpData(int id, Packet packet) {
         packet.WriteLength();
-        Debug.Log("Sending message to client.. " + msg);
         getClientById(id).sendTcpData(packet);
     }
 
-    private void sendTcpDataToAll(string msg) {
+    private void sendTcpDataToAll(Packet packet) {
         clients.ForEach(client => {
-            Packet packet = new Packet();
-            packet.Write(msg);
-            packet.Write(client.getId());
             packet.WriteLength();
-            Debug.Log("Sending message to clients.. " + msg);
             client.sendTcpData(packet);
         });
     }
 
-    private void sendTcpDataToAll(int exceptClient, string msg) {
+    private void sendTcpDataToAll(int exceptClient, Packet packet) {
         clients.ForEach(client => {
             if(client.getId() != exceptClient) {
-                Packet packet = new Packet();
-                packet.Write(msg);
-                packet.Write(client.getId());
                 packet.WriteLength();
-                Debug.Log("Sending message to clients.. " + msg);
                 client.sendTcpData(packet);
             }
         });
     }
 
     public void sendReceiveConnectionByUdp(int id) {
-        sendUdpData(id, "Hello from server UDP.");
+        Packet packet = new Packet();
+        packet.Write("newConnectionUDP");
+        packet.Write(id);
+        sendUdpData(id, packet);
     }
 
-    private void sendUdpData(int id, string msg) {
-        Packet packet = new Packet();
-        packet.Write(msg);
-        packet.Write(id);
+    private void sendUdpData(int id, Packet packet) {
         packet.WriteLength();
-        Debug.Log("Sending message to client.. " + msg);
         sendUdpData(packet, getClientById(id).getEndPointUdp());
     }
 
-    private void sendUdpDataToAll(string msg) {
+    private void sendUdpDataToAll(Packet packet) {
         clients.ForEach(client => {
-            Packet packet = new Packet();
-            packet.Write(msg);
-            packet.Write(client.getId());
             packet.WriteLength();
-            Debug.Log("Sending message to clients.. " + msg);
             sendUdpData(packet, client.getEndPointUdp());
         });
     }
 
-    private void sendUdpDataToAll(int exceptClient, string msg) {
+    private void sendUdpDataToAll(int exceptClient, Packet packet) {
         clients.ForEach(client => {
             if(client.getId() != exceptClient) {
-                Packet packet = new Packet();
-                packet.Write(msg);
-                packet.Write(client.getId());
                 packet.WriteLength();
-                Debug.Log("Sending message to clients.. " + msg);
                 sendUdpData(packet, client.getEndPointUdp());
             }
         });
@@ -130,6 +150,53 @@ public class Server : MonoBehaviour {
 
     public void sendUdpData(Packet packet, IPEndPoint endPoint) {
         udp.sendData(packet, endPoint);
+    }
+    
+    private void spawnPlayer(int id, Vector3 position, Quaternion rotation) {
+        Packet packet = new Packet();
+        packet.Write("spawnPlayer");
+        packet.Write(id);
+        packet.Write(position);
+        packet.Write(rotation);
+
+        sendTcpData(id, packet);
+
+        clients.ForEach(client => {
+            if(client.getId() != id) {
+                packet = new Packet();
+                packet.Write("newConnection");
+                packet.Write(client.getId());
+                packet.Write(client.getUsername());
+                packet.Write(client.getPosition());
+                packet.Write(client.getRotation());
+
+                sendTcpDataToAll(id, packet);
+            }
+        });
+    }
+
+    public void newConnection(int id, string username) {
+        Client client = getClientById(id);
+        client.setUsername(username);
+
+        Packet packet = new Packet();
+        packet.Write("newConnection");
+        packet.Write(client.getId());
+        packet.Write(client.getUsername());
+        packet.Write(client.getPosition());
+        packet.Write(client.getRotation());
+
+        sendTcpDataToAll(id, packet);
+
+        Server.instance.addAction(() => {
+            Server.instance.instantiatePlayer(client.getId(), client.getUsername(), client.getPosition(), client.getRotation());
+        });
+    }
+
+    public void playerKeys(int id, float x, float y, bool jumping, Quaternion rotation) {
+        GameObject player = getClientById(id).getPlayer();
+        PlayerController playerController = player.GetComponent<PlayerController>();
+        playerController.setKeys(x, y, jumping, rotation);
     }
 
     public Client getClientById(int id) {
