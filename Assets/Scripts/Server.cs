@@ -16,8 +16,6 @@ public class Server : MonoBehaviour {
     private int port = 8080;
     private Udp udp;
 
-    private static Queue actions = new Queue();
-
     private void Awake() {
         if (instance != null && instance != this){
             Destroy(this.gameObject);
@@ -29,11 +27,6 @@ public class Server : MonoBehaviour {
     }
 
     private void FixedUpdate() {
-        if (actions.Count > 0) {
-            Action action = (Action) actions.Dequeue();
-            action.Invoke();
-        }
-
         clients.ForEach(client => {
             GameObject player = client.getPlayer();
             
@@ -55,10 +48,6 @@ public class Server : MonoBehaviour {
     public void instantiatePlayer(int id, string username, Vector3 position, Quaternion rotation) {
         GameObject playerGO = Instantiate(playerPrefab, position, rotation);
         getClientById(id).setPlayer(playerGO);
-    }
-
-    public void addAction(Action action) {
-        actions.Enqueue(action);
     }
 
     private void startServer() {
@@ -194,7 +183,7 @@ public class Server : MonoBehaviour {
 
         sendTcpDataToAll(id, packet);
 
-        Server.instance.addAction(() => {
+        ThreadManager.ExecuteOnMainThread(() => {
             Server.instance.instantiatePlayer(client.getId(), client.getUsername(), client.getPosition(), client.getRotation());
         });
     }

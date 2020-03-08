@@ -57,7 +57,7 @@ public class Udp {
             bool jumping = packet.ReadBool();
             Quaternion rotation = packet.ReadQuaternion();
 
-            Server.instance.addAction(() => {
+            ThreadManager.ExecuteOnMainThread(() => {
                 Server.instance.playerKeys(id, x, y, jumping, rotation);
             });
         }
