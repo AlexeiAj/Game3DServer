@@ -16,7 +16,7 @@ public class Server : MonoBehaviour {
     private int port = 8080;
     private Udp udp;
 
-    private static Stack actions = new Stack();
+    private static Queue actions = new Queue();
 
     private void Awake() {
         if (instance != null && instance != this){
@@ -28,7 +28,12 @@ public class Server : MonoBehaviour {
         startServer();
     }
 
-    private void Update() {
+    private void FixedUpdate() {
+        if (actions.Count > 0) {
+            Action action = (Action) actions.Dequeue();
+            action.Invoke();
+        }
+
         clients.ForEach(client => {
             GameObject player = client.getPlayer();
             
@@ -45,11 +50,6 @@ public class Server : MonoBehaviour {
                 sendUdpDataToAll(packet);
             }
         });
-
-        if (actions.Count == 0) return;
-
-        Action action = (Action) actions.Pop();
-        action.Invoke();
     }
 
     public void instantiatePlayer(int id, string username, Vector3 position, Quaternion rotation) {
@@ -57,11 +57,13 @@ public class Server : MonoBehaviour {
         getClientById(id).setPlayer(playerGO);
     }
 
-    internal void addAction(Action action) {
-        actions.Push(action);
+    public void addAction(Action action) {
+        actions.Enqueue(action);
     }
 
     private void startServer() {
+        QualitySettings.vSyncCount = 0;
+        Application.targetFrameRate = 60;
         Debug.Log("Starting server...");
 
         udpListener = new UdpClient(port);
@@ -92,11 +94,15 @@ public class Server : MonoBehaviour {
         Tcp tcp = new Tcp(socket);
         client.setTcp(tcp);
         client.getTcp().connect();
-        
-        clients.Add(client);
+
+        addClients(client);
         spawnPlayer(client.getId(), client.getPosition(), client.getRotation());
 
         Debug.Log("New client connected!");
+    }
+
+    public void addClients(Client client) {
+        clients.Add(client);
     }
 
     private void sendTcpData(int id, Packet packet) {
@@ -105,16 +111,16 @@ public class Server : MonoBehaviour {
     }
 
     private void sendTcpDataToAll(Packet packet) {
+        packet.WriteLength();
         clients.ForEach(client => {
-            packet.WriteLength();
             client.sendTcpData(packet);
         });
     }
 
     private void sendTcpDataToAll(int exceptClient, Packet packet) {
+        packet.WriteLength();
         clients.ForEach(client => {
             if(client.getId() != exceptClient) {
-                packet.WriteLength();
                 client.sendTcpData(packet);
             }
         });
@@ -133,16 +139,16 @@ public class Server : MonoBehaviour {
     }
 
     private void sendUdpDataToAll(Packet packet) {
+        packet.WriteLength();
         clients.ForEach(client => {
-            packet.WriteLength();
             sendUdpData(packet, client.getEndPointUdp());
         });
     }
 
     private void sendUdpDataToAll(int exceptClient, Packet packet) {
+        packet.WriteLength();
         clients.ForEach(client => {
             if(client.getId() != exceptClient) {
-                packet.WriteLength();
                 sendUdpData(packet, client.getEndPointUdp());
             }
         });
@@ -170,7 +176,7 @@ public class Server : MonoBehaviour {
                 packet.Write(client.getPosition());
                 packet.Write(client.getRotation());
 
-                sendTcpDataToAll(id, packet);
+                sendTcpData(id, packet);
             }
         });
     }
@@ -195,6 +201,8 @@ public class Server : MonoBehaviour {
 
     public void playerKeys(int id, float x, float y, bool jumping, Quaternion rotation) {
         GameObject player = getClientById(id).getPlayer();
+        if(player == null) return;
+        
         PlayerController playerController = player.GetComponent<PlayerController>();
         playerController.setKeys(x, y, jumping, rotation);
     }

@@ -47,6 +47,7 @@ public class Udp {
         }
 
         if (method.Equals("newConnectionUDP")) {
+            Debug.Log("new connection UDP client: " + id);
             Server.instance.sendReceiveConnectionByUdp(id);
         }
 
