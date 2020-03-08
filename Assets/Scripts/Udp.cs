@@ -54,11 +54,16 @@ public class Udp {
         if (method.Equals("playerKeys")) {
             float x = packet.ReadFloat();
             float y = packet.ReadFloat();
+            float mouseX = packet.ReadFloat();
+            float mouseY = packet.ReadFloat();
+            bool mouseLeft = packet.ReadBool();
+            bool mouseRight = packet.ReadBool();
             bool jumping = packet.ReadBool();
-            Quaternion rotation = packet.ReadQuaternion();
+            bool shift = packet.ReadBool();
+            bool e = packet.ReadBool();
 
             ThreadManager.ExecuteOnMainThread(() => {
-                Server.instance.playerKeys(id, x, y, jumping, rotation);
+                Server.instance.playerKeys(id, x, y, mouseX, mouseY, mouseLeft, mouseRight, jumping, shift, e);
             });
         }
     }

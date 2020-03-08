@@ -33,12 +33,14 @@ public class Server : MonoBehaviour {
             if(player != null){
                 client.setPosition(player.transform.position);
                 client.setRotation(player.transform.rotation);
+                client.setCamRotation(player.GetComponent<PlayerController>().camRotation);
 
                 Packet packet = new Packet();
                 packet.Write("playerPosition");
                 packet.Write(client.getId());
                 packet.Write(client.getPosition());
                 packet.Write(client.getRotation());
+                packet.Write(client.getCamRotation());
 
                 sendUdpDataToAll(packet);
             }
@@ -188,12 +190,12 @@ public class Server : MonoBehaviour {
         });
     }
 
-    public void playerKeys(int id, float x, float y, bool jumping, Quaternion rotation) {
+    public void playerKeys(int id, float x, float y, float mouseX, float mouseY, bool mouseLeft, bool mouseRight, bool jumping, bool shift, bool e) {
         GameObject player = getClientById(id).getPlayer();
         if(player == null) return;
         
         PlayerController playerController = player.GetComponent<PlayerController>();
-        playerController.setKeys(x, y, jumping, rotation);
+        playerController.setKeys(x, y, mouseX, mouseY, mouseLeft, mouseRight, jumping, shift, e);
     }
 
     public Client getClientById(int id) {

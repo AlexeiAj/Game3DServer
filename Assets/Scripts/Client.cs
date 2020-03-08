@@ -14,6 +14,7 @@ public class Client {
     private string username;
     private Vector3 position;
     private Quaternion rotation;
+    private Quaternion camRotation;
 
     public Client(int id, Vector3 position, Quaternion rotation) {
         this.id = id;
@@ -53,12 +54,20 @@ public class Client {
         return rotation;
     }
 
+    public Quaternion getCamRotation() {
+        return camRotation;
+    }
+
     public void setPosition(Vector3 position) {
         this.position = position;
     }
 
     public void setRotation(Quaternion rotation) {
         this.rotation = rotation;
+    }
+
+    public void setCamRotation(Quaternion camRotation) {
+        this.camRotation = camRotation;
     }
 
     public string getUsername() {

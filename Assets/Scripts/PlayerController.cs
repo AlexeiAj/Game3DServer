@@ -22,24 +22,50 @@ public class PlayerController : MonoBehaviour
     public Transform groundCheck;
     public LayerMask whatIsGround;
 
+    public Quaternion camRotation;
+
     private float x;
     private float y;
+    private float mouseX;
+    private float mouseY;
+    private bool mouseLeft;
+    private bool mouseRight;
     private bool jumping;
+    private bool shift;
+    private bool e;
 
     void Update() {
         isGrounded = Physics.OverlapSphere(groundCheck.position, groundCheckRadius, whatIsGround).Length > 0;
+        look();
         movement();
         jump();
     }
 
-    public void setKeys(float x, float y, bool jumping, Quaternion rotation){
+    public void setKeys(float x, float y, float mouseX, float mouseY, bool mouseLeft, bool mouseRight, bool jumping, bool shift, bool e){
         this.x = x;
         this.y = y;
+        this.mouseX = mouseX;
+        this.mouseY = mouseY;
+        this.mouseLeft = mouseLeft;
+        this.mouseRight = mouseRight;
         this.jumping = jumping;
-        transform.rotation = rotation;
+        this.shift = shift;
+        this.e = e;
+    }
+
+    private void look(){
+        float mX = mouseX * mouseSensitivity * Time.deltaTime;
+        float mY = mouseY * mouseSensitivity * Time.deltaTime;
+
+        xRotation -= mY;
+        xRotation = Mathf.Clamp(xRotation, -90f, 90f);
+
+        camRotation = Quaternion.Euler(xRotation, 0, 0);
+        transform.Rotate(Vector3.up * mX);
     }
 
     private void movement() {
+        if(shift) return;
         counterMovement();
         rb.AddForce(transform.forward * y * moveSpeed * Time.deltaTime);
         rb.AddForce(transform.right * x * moveSpeed * Time.deltaTime);
