@@ -4,13 +4,14 @@ using UnityEngine;
 using System.Net;
 using System.Net.Sockets;
 using System;
+using System.Linq;
 
 public class Server : MonoBehaviour {
     public GameObject playerPrefab;
     public static Server instance = null;
     private TcpListener tcpListener;
     private UdpClient udpListener;
-    private List<Client> clients = new List<Client>();
+    Dictionary<int, Client> clients = new Dictionary<int, Client>();
     private int maxPlayers = 50;
     private int totalPlayers = 0;
     private int port = 8080;
@@ -27,7 +28,7 @@ public class Server : MonoBehaviour {
     }
 
     private void FixedUpdate() {
-        clients.ForEach(client => {
+        getClients().ForEach(client => {
             GameObject player = client.getPlayer();
             
             if(player != null){
@@ -82,7 +83,7 @@ public class Server : MonoBehaviour {
         int z = rand.Next(-16, 16);
 
         Client client = new Client(totalPlayers++, new Vector3(x, 5, z), Quaternion.identity);
-        Tcp tcp = new Tcp(socket);
+        Tcp tcp = new Tcp(socket, client.getId());
         client.setTcp(tcp);
         client.getTcp().connect();
 
@@ -93,7 +94,19 @@ public class Server : MonoBehaviour {
     }
 
     public void addClients(Client client) {
-        clients.Add(client);
+        clients.Add(client.getId(), client);
+    }
+
+    public void removeClients(Client client) {
+        clients.Remove(client.getId());
+    }
+
+    public List<Client> getClients() {
+        return clients.Select(client => client.Value).ToList();
+    }
+
+    public Client getClientById(int id) {
+        return clients[id];
     }
 
     private void sendTcpData(int id, Packet packet) {
@@ -103,14 +116,14 @@ public class Server : MonoBehaviour {
 
     private void sendTcpDataToAll(Packet packet) {
         packet.WriteLength();
-        clients.ForEach(client => {
+        getClients().ForEach(client => {
             client.sendTcpData(packet);
         });
     }
 
     private void sendTcpDataToAll(int exceptClient, Packet packet) {
         packet.WriteLength();
-        clients.ForEach(client => {
+        getClients().ForEach(client => {
             if(client.getId() != exceptClient) {
                 client.sendTcpData(packet);
             }
@@ -132,14 +145,14 @@ public class Server : MonoBehaviour {
 
     private void sendUdpDataToAll(Packet packet) {
         packet.WriteLength();
-        clients.ForEach(client => {
+        getClients().ForEach(client => {
             sendUdpData(packet, client.getEndPointUdp());
         });
     }
 
     private void sendUdpDataToAll(int exceptClient, Packet packet) {
         packet.WriteLength();
-        clients.ForEach(client => {
+        getClients().ForEach(client => {
             if(client.getId() != exceptClient) {
                 sendUdpData(packet, client.getEndPointUdp());
             }
@@ -159,7 +172,7 @@ public class Server : MonoBehaviour {
 
         sendTcpData(id, packet);
 
-        clients.ForEach(client => {
+        getClients().ForEach(client => {
             if(client.getId() != id) {
                 packet = new Packet();
                 packet.Write("newConnection");
@@ -210,7 +223,39 @@ public class Server : MonoBehaviour {
         playerController.setKeys(keys);
     }
 
-    public Client getClientById(int id) {
-        return clients[id];
+    private void OnApplicationQuit() {
+        disconnectServer();
+    }
+
+    public void disconnectServer() {
+        udp = null;
+        getClients().ForEach(client => disconnectPlayer(client));
+    }
+
+    public void disconnectPlayer(int id) {
+        Client client = getClientById(id);
+        if (client == null) return;
+
+        disconnectPlayer(client);
+    }
+
+    public void disconnectPlayer(Client client) {
+        GameObject player = client.getPlayer();
+        if(player != null) ThreadManager.ExecuteOnMainThread(() => Destroy(player));
+        
+        String name = client.getUsername();
+        int id = client.getId();
+
+        client.disconnect();
+        client.setPlayer(null);
+        removeClients(client);
+
+        Packet packet = new Packet();
+        packet.Write("playerDisconnect");
+        packet.Write(client.getId());
+
+        sendTcpDataToAll(id, packet);
+
+        Debug.Log("Player [id: "+id+" name: "+name+"] has disconnect!");
     }
 }

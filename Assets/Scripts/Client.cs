@@ -85,4 +85,10 @@ public class Client {
     public GameObject getPlayer() {
         return player;
     }
+
+    public void disconnect() {
+        tcp.disconnect();
+        tcp = null;
+        endPointUdp = null;
+    }
 }

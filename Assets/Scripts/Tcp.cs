@@ -11,9 +11,11 @@ public class Tcp {
     private NetworkStream stream;
     private byte[] recieveBuffer;
     private Packet receiveData;
+    private int id;
 
-    public Tcp (TcpClient socket) {
+    public Tcp (TcpClient socket, int id) {
         this.socket = socket;
+        this.id = id;
     }
 
     public void connect() {
@@ -34,6 +36,7 @@ public class Tcp {
 
             if (byteLenght <= 0) {
                 Debug.Log("Disconnecting client tcp...");
+                Server.instance.disconnectPlayer(id);
                 return;
             }
 
@@ -43,8 +46,8 @@ public class Tcp {
 
             stream.BeginRead(recieveBuffer, 0, dataBufferSize, receiveCallback, null);
         } catch (System.Exception e) {
-            Debug.Log(e);
             Debug.Log("Disconnecting client tcp...");
+            Server.instance.disconnectPlayer(id);
         }
     }
 
@@ -85,5 +88,13 @@ public class Tcp {
         } catch {
             Debug.Log("Err. sending tcp to client!");
         }
+    }
+
+    public void disconnect() {
+        socket.Close();
+        stream = null;
+        receiveData = null;
+        recieveBuffer = null;
+        socket = null;
     }
 }

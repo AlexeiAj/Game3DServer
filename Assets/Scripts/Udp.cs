@@ -23,14 +23,13 @@ public class Udp {
             udpListener.BeginReceive(udpReceiveCallback, null);
 
             if (data.Length < 4) {
-                Debug.Log("Disconnecting client udp...");
+                Debug.Log("Err. receiving udp data!");
                 return;
             }
 
             handleData(data, clientEndPoint);
         } catch (System.Exception e) {
-            Debug.Log(e);
-            Debug.Log("Disconnecting client udp...");
+            Debug.Log("Err. receiving udp data!");
         }
     }
 
