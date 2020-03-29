@@ -117,11 +117,12 @@ public class Server : MonoBehaviour {
         });
     }
 
-    public void sendReceiveConnectionByUdp(int id) {
-        Packet packet = new Packet();
-        packet.Write("newConnectionUDP");
-        packet.Write(id);
-        sendUdpData(id, packet);
+    public void newConnectionUDP(int id, Packet packet) {
+        Debug.Log("new connection UDP client: " + id);
+        Packet packetSend = new Packet();
+        packetSend.Write("newConnectionUDP");
+        packetSend.Write(id);
+        sendUdpData(id, packetSend);
     }
 
     private void sendUdpData(int id, Packet packet) {
@@ -172,30 +173,41 @@ public class Server : MonoBehaviour {
         });
     }
 
-    public void newConnection(int id, string username) {
+    public void newConnection(Packet packet) {
+        int id = packet.ReadInt();
+        string username = packet.ReadString();
+
         Client client = getClientById(id);
         client.setUsername(username);
 
-        Packet packet = new Packet();
-        packet.Write("newConnection");
-        packet.Write(client.getId());
-        packet.Write(client.getUsername());
-        packet.Write(client.getPosition());
-        packet.Write(client.getRotation());
+        Packet packetSend = new Packet();
+        packetSend.Write("newConnection");
+        packetSend.Write(client.getId());
+        packetSend.Write(client.getUsername());
+        packetSend.Write(client.getPosition());
+        packetSend.Write(client.getRotation());
 
-        sendTcpDataToAll(id, packet);
+        sendTcpDataToAll(id, packetSend);
 
         ThreadManager.ExecuteOnMainThread(() => {
             Server.instance.instantiatePlayer(client.getId(), client.getUsername(), client.getPosition(), client.getRotation());
         });
     }
 
-    public void playerKeys(int id, float x, float y, float mouseX, float mouseY, bool mouseLeft, bool mouseRight, bool jumping, bool shift, bool e) {
+    public void playerKeys(int id, Packet packet) {
+        Keys keys = packet.ReadKeys();
+
+        ThreadManager.ExecuteOnMainThread(() => {
+            Server.instance.playerKeysUpdate(id, keys);
+        });
+    }
+
+    public void playerKeysUpdate(int id, Keys keys) {
         GameObject player = getClientById(id).getPlayer();
         if(player == null) return;
         
         PlayerController playerController = player.GetComponent<PlayerController>();
-        playerController.setKeys(x, y, mouseX, mouseY, mouseLeft, mouseRight, jumping, shift, e);
+        playerController.setKeys(keys);
     }
 
     public Client getClientById(int id) {

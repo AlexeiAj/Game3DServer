@@ -88,7 +88,7 @@ public class Packet {
         Write(value.Length);
         buffer.AddRange(Encoding.ASCII.GetBytes(value));
     }
-
+    
     public void Write(Vector3 value) {
         Write(value.x);
         Write(value.y);
@@ -100,6 +100,15 @@ public class Packet {
         Write(value.y);
         Write(value.z);
         Write(value.w);
+    }
+
+    public void Write(Keys keys) {
+        foreach(var prop in keys.GetType().GetProperties()) {
+            Type type = prop.PropertyType;
+            object value = prop.GetValue(keys, null);
+            if(type == typeof(bool)) Write((bool) value);
+            if(type == typeof(float)) Write((float) value);
+        }
     }
 
     public byte ReadByte(bool moveReadPos = true) {
@@ -189,5 +198,17 @@ public class Packet {
 
     public Quaternion ReadQuaternion(bool moveReadPos = true) {
         return new Quaternion(ReadFloat(moveReadPos), ReadFloat(moveReadPos), ReadFloat(moveReadPos), ReadFloat(moveReadPos));
+    }
+
+    public Keys ReadKeys(bool moveReadPos = true) {
+        Keys keys = new Keys();
+        
+        foreach(var prop in keys.GetType().GetProperties()) {
+            Type type = prop.PropertyType;
+            if(type == typeof(float)) prop.SetValue(keys, ReadFloat(moveReadPos));
+            if(type == typeof(bool)) prop.SetValue(keys, ReadBool(moveReadPos));
+        }
+
+        return keys;
     }
 }

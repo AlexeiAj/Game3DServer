@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
-    private float jumpHeight = 10000f;
+    private float jumpHeight = 20000f;
     private float jumpDelay = 0.3f;
 
     private float maxSpeed = 6f;
@@ -24,15 +24,11 @@ public class PlayerController : MonoBehaviour
 
     public Quaternion camRotation;
 
-    private float x;
-    private float y;
-    private float mouseX;
-    private float mouseY;
-    private bool mouseLeft;
-    private bool mouseRight;
-    private bool jumping;
-    private bool shift;
-    private bool e;
+    public Keys keys { get; set; }
+
+    void Start() {
+        keys = new Keys();
+    }
 
     void Update() {
         isGrounded = Physics.OverlapSphere(groundCheck.position, groundCheckRadius, whatIsGround).Length > 0;
@@ -41,21 +37,21 @@ public class PlayerController : MonoBehaviour
         jump();
     }
 
-    public void setKeys(float x, float y, float mouseX, float mouseY, bool mouseLeft, bool mouseRight, bool jumping, bool shift, bool e){
-        this.x = x;
-        this.y = y;
-        this.mouseX = mouseX;
-        this.mouseY = mouseY;
-        this.mouseLeft = mouseLeft;
-        this.mouseRight = mouseRight;
-        this.jumping = jumping;
-        this.shift = shift;
-        this.e = e;
+    // void FixedUpdate() {
+    //     sendKeys();
+    // }
+
+    // private void sendKeys(){
+    //     keys.updateKeys();
+    // }
+
+    public void setKeys(Keys keys){
+        this.keys = keys;
     }
 
     private void look(){
-        float mX = mouseX * mouseSensitivity * Time.deltaTime;
-        float mY = mouseY * mouseSensitivity * Time.deltaTime;
+        float mX = keys.mouseX * mouseSensitivity * Time.deltaTime;
+        float mY = keys.mouseY * mouseSensitivity * Time.deltaTime;
 
         xRotation -= mY;
         xRotation = Mathf.Clamp(xRotation, -90f, 90f);
@@ -65,14 +61,14 @@ public class PlayerController : MonoBehaviour
     }
 
     private void movement() {
-        if(shift) return;
+        if(keys.shift) return;
         counterMovement();
-        rb.AddForce(transform.forward * y * moveSpeed * Time.deltaTime);
-        rb.AddForce(transform.right * x * moveSpeed * Time.deltaTime);
+        rb.AddForce(transform.forward * keys.y * moveSpeed * Time.deltaTime);
+        rb.AddForce(transform.right * keys.x * moveSpeed * Time.deltaTime);
     }
 
     private void jump() {
-        if(jumping && isGrounded && readyToJump){
+        if(keys.jumping && isGrounded && readyToJump){
             readyToJump = false;
             rb.AddForce(Vector3.up * jumpHeight, ForceMode.Impulse);
             Invoke("restartJump", jumpDelay);
@@ -87,8 +83,8 @@ public class PlayerController : MonoBehaviour
         if (isGrounded) {
             Vector2 mag = getMagnitudeXAndY();
 
-            if (x == 0) rb.AddForce(transform.right * moveSpeed * Time.deltaTime  * -mag.x * cmMultiplier);
-            if (y == 0) rb.AddForce(transform.forward * moveSpeed * Time.deltaTime  * -mag.y * cmMultiplier);
+            if (keys.x == 0) rb.AddForce(transform.right * moveSpeed * Time.deltaTime  * -mag.x * cmMultiplier);
+            if (keys.y == 0) rb.AddForce(transform.forward * moveSpeed * Time.deltaTime  * -mag.y * cmMultiplier);
         }
 
         if(rb.velocity.magnitude > maxSpeed) rb.velocity = rb.velocity.normalized * maxSpeed;

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Net;
 using System.Net.Sockets;
+using System.Reflection;
 
 public class Udp {
     UdpClient udpListener;
@@ -37,35 +38,14 @@ public class Udp {
         Packet packet = new Packet(data);
 
         int i = packet.ReadInt(); //só para remover o id do pacote
-
         string method = packet.ReadString();
         int id = packet.ReadInt();
-
+        
         Client client = Server.instance.getClientById(id);
-        if (client.getEndPointUdp() == null) {
-            client.setEndPointUdp(clientEndPoint);
-        }
+        if (client.getEndPointUdp() == null) client.setEndPointUdp(clientEndPoint);
 
-        if (method.Equals("newConnectionUDP")) {
-            Debug.Log("new connection UDP client: " + id);
-            Server.instance.sendReceiveConnectionByUdp(id);
-        }
-
-        if (method.Equals("playerKeys")) {
-            float x = packet.ReadFloat();
-            float y = packet.ReadFloat();
-            float mouseX = packet.ReadFloat();
-            float mouseY = packet.ReadFloat();
-            bool mouseLeft = packet.ReadBool();
-            bool mouseRight = packet.ReadBool();
-            bool jumping = packet.ReadBool();
-            bool shift = packet.ReadBool();
-            bool e = packet.ReadBool();
-
-            ThreadManager.ExecuteOnMainThread(() => {
-                Server.instance.playerKeys(id, x, y, mouseX, mouseY, mouseLeft, mouseRight, jumping, shift, e);
-            });
-        }
+        MethodInfo theMethod = Server.instance.GetType().GetMethod(method);
+        theMethod.Invoke(Server.instance, new object[]{id, packet});
     }
 
     public void sendData(Packet packet, IPEndPoint endPoint) {

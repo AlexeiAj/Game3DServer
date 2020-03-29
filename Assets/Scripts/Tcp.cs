@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Net;
 using System.Net.Sockets;
+using System.Reflection;
 
 public class Tcp {
     private int dataBufferSize = 4096;
@@ -63,11 +64,8 @@ public class Tcp {
 
             string method = packet.ReadString();
 
-            if(method.Equals("newConnection")) {
-                int id = packet.ReadInt();
-                string username = packet.ReadString();
-                Server.instance.newConnection(id, username);
-            }
+            MethodInfo theMethod = Server.instance.GetType().GetMethod(method);
+            theMethod.Invoke(Server.instance, new object[]{packet});
 
             packetLenght = 0;
 
