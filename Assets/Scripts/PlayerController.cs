@@ -2,14 +2,18 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class PlayerController : MonoBehaviour
-{
-    private float jumpHeight = 20000f;
-    private float jumpDelay = 0.3f;
+public class PlayerController : MonoBehaviour {
 
-    private float maxSpeed = 6f;
-    private float moveSpeed = 800000f;
-    private float cmMultiplier = 3f;
+    public GameObject player;
+    public Keys keys { get; set; }
+    public string username = "";
+    public int id = -1;
+
+    private float jumpHeight = 20000f;
+    private float jumpDelay = 0.6f;
+
+    private float maxSpeed = 12f;
+    private float moveSpeed = 10f;
 
     private float mouseSensitivity = 150f;
     private float xRotation = 0f;
@@ -17,6 +21,7 @@ public class PlayerController : MonoBehaviour
     private bool isGrounded;
     private float groundCheckRadius = 0.1f;
     private bool readyToJump = true;
+    private bool isRunning = false;
 
     public Rigidbody rb;
     public Transform groundCheck;
@@ -24,29 +29,16 @@ public class PlayerController : MonoBehaviour
 
     public Quaternion camRotation;
 
-    public Keys keys { get; set; }
-
     void Start() {
         keys = new Keys();
     }
 
-    void Update() {
+    void FixedUpdate() {
         isGrounded = Physics.OverlapSphere(groundCheck.position, groundCheckRadius, whatIsGround).Length > 0;
         look();
         movement();
         jump();
-    }
-
-    // void FixedUpdate() {
-    //     sendKeys();
-    // }
-
-    // private void sendKeys(){
-    //     keys.updateKeys();
-    // }
-
-    public void setKeys(Keys keys){
-        this.keys = keys;
+        sendPlayerPosition();
     }
 
     private void look(){
@@ -61,10 +53,35 @@ public class PlayerController : MonoBehaviour
     }
 
     private void movement() {
-        if(keys.shift) return;
-        counterMovement();
-        rb.AddForce(transform.forward * keys.y * moveSpeed * Time.deltaTime);
-        rb.AddForce(transform.right * keys.x * moveSpeed * Time.deltaTime);
+        running();
+
+        if (isGrounded) {
+            Vector3 targetVelocity = new Vector3(keys.x, 0, keys.y);
+            targetVelocity = transform.TransformDirection(targetVelocity);
+            targetVelocity *= moveSpeed;
+
+            Vector3 velocity = rb.velocity;
+            Vector3 velocityChange = (targetVelocity - velocity);
+            velocityChange.x = Mathf.Clamp(velocityChange.x, -maxSpeed, maxSpeed);
+            velocityChange.z = Mathf.Clamp(velocityChange.z, -maxSpeed, maxSpeed);
+            velocityChange.y = 0;
+            rb.AddForce(velocityChange, ForceMode.VelocityChange);
+            
+        }
+
+        if (!isGrounded) { 
+            if (keys.y != 0) rb.AddForce(transform.forward * keys.y * moveSpeed * 100000f * Time.deltaTime);
+            if (keys.x != 0) rb.AddForce(transform.right * keys.x * moveSpeed * 100000f * Time.deltaTime);
+            if (rb.velocity.magnitude > maxSpeed) rb.velocity = rb.velocity.normalized * maxSpeed;
+        }
+    }
+
+    private void running() {
+        bool aux = isRunning;
+
+        isRunning = keys.x != 0 || keys.y != 0;
+        if(!isGrounded) isRunning = false;
+        if(aux == isRunning) return;
     }
 
     private void jump() {
@@ -79,26 +96,57 @@ public class PlayerController : MonoBehaviour
         readyToJump = true;
     }
 
-    private void counterMovement() {
-        if (isGrounded) {
-            Vector2 mag = getMagnitudeXAndY();
+    public void sendPlayerPosition() {
+        Packet packet = new Packet();
+        packet.Write("playerPositionFS");
+        packet.Write(id);
+        packet.Write(player.transform.position);
+        packet.Write(player.transform.rotation);
+        packet.Write(camRotation);
+        packet.Write(isGrounded);
+        packet.Write(keys);
 
-            if (keys.x == 0) rb.AddForce(transform.right * moveSpeed * Time.deltaTime  * -mag.x * cmMultiplier);
-            if (keys.y == 0) rb.AddForce(transform.forward * moveSpeed * Time.deltaTime  * -mag.y * cmMultiplier);
-        }
-
-        if(rb.velocity.magnitude > maxSpeed) rb.velocity = rb.velocity.normalized * maxSpeed;
+        Server.instance.sendUdpDataToAll(packet);
     }
 
-    private Vector2 getMagnitudeXAndY() {
-        float lookAngle = transform.eulerAngles.y;
-        float moveAngle = Mathf.Atan2(rb.velocity.x, rb.velocity.z) * Mathf.Rad2Deg;
-        float u = Mathf.DeltaAngle(lookAngle, moveAngle);
-        float v = 90 - u;
-        float magnitude = rb.velocity.magnitude;
-        float magY = magnitude * Mathf.Cos(u * Mathf.Deg2Rad);
-        float magX = magnitude * Mathf.Cos(v * Mathf.Deg2Rad);
+    // private void updateKeys(){
+    //     keys.updateKeys();
+    // }
 
-        return new Vector2(magX, magY);
+    public void playerKeys(Packet packet) {
+        Keys keys = packet.ReadKeys();
+        setKeys(keys);
+    }
+
+    public void setKeys(Keys keys){
+        this.keys = keys;
+    }
+
+    public void removePlayer() {
+        ThreadManager.ExecuteOnMainThread(() => Destroy(player));
+    }
+
+    public void setPlayerPosition(Vector3 position) {
+        player.transform.position = position;
+    }
+
+    public void setPlayerRotation(Quaternion rotation) {
+        player.transform.rotation = rotation;
+    }
+
+    public Vector3 getPlayerPosition() {
+        return player.transform.position;
+    }
+
+    public Quaternion getPlayerRotation() {
+        return player.transform.rotation;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public void setUsername(string username) {
+        this.username = username;
     }
 }

@@ -5,21 +5,15 @@ using System.Net;
 using System.Net.Sockets;
 
 public class Client {
-    private int id;
+    private int id = -1;
+    private string username = "";
+
     private Tcp tcp;
     private IPEndPoint endPointUdp;
-    
-    private GameObject player;
+    private PlayerController player;
 
-    private string username;
-    private Vector3 position;
-    private Quaternion rotation;
-    private Quaternion camRotation;
-
-    public Client(int id, Vector3 position, Quaternion rotation) {
+    public Client(int id) {
         this.id = id;
-        this.position = position;
-        this.rotation = rotation;
     }
 
     public void sendTcpData(Packet packet) {
@@ -44,30 +38,6 @@ public class Client {
 
     public void setEndPointUdp(IPEndPoint endPointUdp) {
         this.endPointUdp = endPointUdp;
-    } 
-
-    public Vector3 getPosition() {
-        return position;
-    }
-
-    public Quaternion getRotation() {
-        return rotation;
-    }
-
-    public Quaternion getCamRotation() {
-        return camRotation;
-    }
-
-    public void setPosition(Vector3 position) {
-        this.position = position;
-    }
-
-    public void setRotation(Quaternion rotation) {
-        this.rotation = rotation;
-    }
-
-    public void setCamRotation(Quaternion camRotation) {
-        this.camRotation = camRotation;
     }
 
     public string getUsername() {
@@ -78,11 +48,11 @@ public class Client {
         this.username = username;
     }
 
-    public void setPlayer(GameObject player) {
+    public void setPlayer(PlayerController player) {
         this.player = player;
     }
 
-    public GameObject getPlayer() {
+    public PlayerController getPlayer() {
         return player;
     }
 
