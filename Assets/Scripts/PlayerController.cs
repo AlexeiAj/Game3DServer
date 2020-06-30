@@ -5,6 +5,7 @@ using UnityEngine;
 public class PlayerController : MonoBehaviour {
 
     public GameObject player;
+    public Camera playerCam;
     public Keys keys { get; set; }
     public string username = "";
     public int id = -1;
@@ -29,6 +30,11 @@ public class PlayerController : MonoBehaviour {
 
     public Quaternion camRotation;
 
+    private float damage = 10f;
+    private float range = 100f;
+    private float fireRate = 2f;
+    private float nextTimeToFire = 0f;
+
     void Start() {
         keys = new Keys();
     }
@@ -38,7 +44,22 @@ public class PlayerController : MonoBehaviour {
         look();
         movement();
         jump();
+        shoot();
         sendPlayerPosition();
+    }
+
+    private void shoot() {
+        if(keys.mouseLeft && Time.time >= nextTimeToFire) {
+            nextTimeToFire = Time.time + 2f / fireRate;
+
+            RaycastHit hit;
+            if (Physics.Raycast(playerCam.transform.position, playerCam.transform.forward, out hit, range)) {
+                Debug.Log(hit.transform.name);
+                // hit.rigidbody.AddForce(-hit.normal * force);
+                //GameObject impactGo = Instantiate(impactEffectPS, hit.point, Quaternion.LookRotation(hit.normal));
+                //Destroy(impactGo, 1f);
+            }
+        }
     }
 
     private void look(){
@@ -49,6 +70,7 @@ public class PlayerController : MonoBehaviour {
         xRotation = Mathf.Clamp(xRotation, -90f, 90f);
 
         camRotation = Quaternion.Euler(xRotation, 0, 0);
+        playerCam.transform.localRotation = camRotation;
         transform.Rotate(Vector3.up * mX);
     }
 
