@@ -16,7 +16,7 @@ public class Server : MonoBehaviour {
 
     private int maxPlayers = 50;
     private int totalPlayers = 0;
-    private int port = 8080;
+    private int port = 8800;
 
     private void Awake() {
         if (instance != null && instance != this){

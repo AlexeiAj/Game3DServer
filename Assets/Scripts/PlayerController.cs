@@ -10,19 +10,24 @@ public class PlayerController : MonoBehaviour {
     public string username = "";
     public int id = -1;
 
+    private float dashExecutionTimeDelay = 0.1f;
+    private float dashForce = 2000f;
+    private float dashDelay = 0.8f;
+    private bool finishDashDelay = true;
+    private bool isDashing = false;
+
     private float jumpHeight = 20000f;
     private float jumpDelay = 0.6f;
-
+    private bool readyToJump = true;
+    
     private float maxSpeed = 12f;
     private float moveSpeed = 10f;
-
-    private float mouseSensitivity = 150f;
+    private float mouseSensitivity = 70f;
     private float xRotation = 0f;
-
+    private bool isRunning = false;
+    
     private bool isGrounded;
     private float groundCheckRadius = 0.1f;
-    private bool readyToJump = true;
-    private bool isRunning = false;
 
     public Rigidbody rb;
     public Transform groundCheck;
@@ -35,6 +40,9 @@ public class PlayerController : MonoBehaviour {
     private float fireRate = 2f;
     private float nextTimeToFire = 0f;
 
+    private float health = 100f;
+    private float block = 100f;
+
     void Start() {
         keys = new Keys();
     }
@@ -44,6 +52,7 @@ public class PlayerController : MonoBehaviour {
         look();
         movement();
         jump();
+        dash();
         shoot();
         sendPlayerPosition();
     }
@@ -54,12 +63,22 @@ public class PlayerController : MonoBehaviour {
 
             RaycastHit hit;
             if (Physics.Raycast(playerCam.transform.position, playerCam.transform.forward, out hit, range)) {
-                Debug.Log(hit.transform.name);
-                // hit.rigidbody.AddForce(-hit.normal * force);
-                //GameObject impactGo = Instantiate(impactEffectPS, hit.point, Quaternion.LookRotation(hit.normal));
-                //Destroy(impactGo, 1f);
+                // Debug.Log(hit.transform.name);
+                PlayerController playerController = hit.transform.gameObject.GetComponent<PlayerController>();
+                if(playerController) playerController.doDamage(10);
+                sendShootImpactLocation(hit.point, Quaternion.LookRotation(hit.normal));
             }
         }
+    }
+
+    public void sendShootImpactLocation(Vector3 hitPoint, Quaternion rotationPoint) {
+        Packet packet = new Packet();
+        packet.Write("shootImpactLocationFS");
+        packet.Write(id);
+        packet.Write(hitPoint);
+        packet.Write(rotationPoint);
+
+        Server.instance.sendUdpDataToAll(packet);
     }
 
     private void look(){
@@ -114,8 +133,37 @@ public class PlayerController : MonoBehaviour {
         }
     }
 
+    private void dash() {
+        if(keys.mouseRight && !isGrounded && !isDashing && finishDashDelay){
+            isDashing = true;
+            finishDashDelay = false;
+            Invoke("restartDash", dashExecutionTimeDelay);
+            Invoke("resetFinishDashDelay", dashDelay);
+        }
+
+        if(isDashing){
+            if (keys.y != 0) rb.AddForce(player.transform.forward * keys.y * dashForce, ForceMode.Acceleration);
+            if (keys.x != 0) rb.AddForce(player.transform.right * keys.x * dashForce, ForceMode.Acceleration);
+        }
+    }  
+
     private void restartJump() {
         readyToJump = true;
+    }
+
+    private void restartDash() {
+        isDashing = false;
+    }
+
+    private void resetFinishDashDelay() {
+        finishDashDelay = true;
+    }
+
+    public void doDamage(float value) {
+        block = block - value <= 0 ? 0 : block - value;
+        health = health - (value / block) <= 0 ? 0 : health - (value / block);
+
+        if(health == 0) Server.instance.disconnectPlayer(id);
     }
 
     public void sendPlayerPosition() {
@@ -126,6 +174,8 @@ public class PlayerController : MonoBehaviour {
         packet.Write(player.transform.rotation);
         packet.Write(camRotation);
         packet.Write(isGrounded);
+        packet.Write(health);
+        packet.Write(block);
         packet.Write(keys);
 
         Server.instance.sendUdpDataToAll(packet);
