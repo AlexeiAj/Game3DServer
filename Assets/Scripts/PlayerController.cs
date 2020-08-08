@@ -41,7 +41,7 @@ public class PlayerController : MonoBehaviour {
     private float nextTimeToFire = 0f;
 
     private float health = 100f;
-    private float block = 100f;
+    private float block = 80f;
 
     void Start() {
         keys = new Keys();
@@ -66,17 +66,18 @@ public class PlayerController : MonoBehaviour {
                 // Debug.Log(hit.transform.name);
                 PlayerController playerController = hit.transform.gameObject.GetComponent<PlayerController>();
                 if(playerController) playerController.doDamage(10);
-                sendShootImpactLocation(hit.point, Quaternion.LookRotation(hit.normal));
+                sendShootImpactLocation(hit.point, Quaternion.LookRotation(hit.normal), playerController != null);
             }
         }
     }
 
-    public void sendShootImpactLocation(Vector3 hitPoint, Quaternion rotationPoint) {
+    public void sendShootImpactLocation(Vector3 hitPoint, Quaternion rotationPoint, bool isPlayer) {
         Packet packet = new Packet();
         packet.Write("shootImpactLocationFS");
         packet.Write(id);
         packet.Write(hitPoint);
         packet.Write(rotationPoint);
+        packet.Write(isPlayer);
 
         Server.instance.sendUdpDataToAll(packet);
     }
@@ -161,9 +162,30 @@ public class PlayerController : MonoBehaviour {
 
     public void doDamage(float value) {
         block = block - value <= 0 ? 0 : block - value;
-        health = health - (value / block) <= 0 ? 0 : health - (value / block);
+        health = health - (value - (block / value)) <= 0 ? 0 : health - (value - (block / value));
 
-        if(health == 0) Server.instance.disconnectPlayer(id);
+        if(health == 0){
+            Packet packet = new Packet();
+            packet.Write("killPlayerFS");
+            packet.Write(id);
+            Server.instance.sendTcpDataToAll(packet);
+            player.SetActive(false);
+            Invoke("respawnPlayer", 10f);
+        }
+    }
+
+    public void respawnPlayer() {
+        Packet packet = new Packet();
+        packet.Write("respawnPlayerFS");
+        packet.Write(id);
+        player.SetActive(true);
+        resetPlayerLife();
+        Server.instance.sendTcpDataToAll(packet);
+    }
+
+    public void resetPlayerLife() {
+        health = 100f;
+        block = 80f;
     }
 
     public void sendPlayerPosition() {

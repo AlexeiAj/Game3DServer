@@ -25,6 +25,9 @@ public class Server : MonoBehaviour {
         }
 
         instance = this;
+    }
+
+    void Start() {
         startServer();
     }
 
@@ -32,6 +35,8 @@ public class Server : MonoBehaviour {
         QualitySettings.vSyncCount = 0;
         Application.targetFrameRate = 60;
         Debug.Log("Starting server...");
+
+        MapGenerator.instance.newMap();
 
         udpListener = new UdpClient(port);
         udp = new Udp(udpListener);
